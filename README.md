@@ -56,7 +56,13 @@ In localized Windows environments, keyboard shortcuts in core applications like 
 *   **Supports both Windows 10 and 11**: Fully tested on Windows 10 20H2 and 22H2, and Windows 11 25H2, supporting both x86 and x64 architectures.
 *   **Supports Classic Wordpad on Windows 11**: Fully tested for the **WinAero**'s classic version of Wordpad on Windows 11. [Read more at Winaero](https://winaero.com/wordpad-for-windows-11/)
 
-## 🖼️ Screenshots / Animated GIFs
+## 🖼️ Screenshots and GIFs
+
+![screenshot](/Images/screenshot1.png)
+
+![screenshot](/Images/screenshot2.png)
+
+![screenshot](/Images/screenshot3.png)
 
 ![screenshot](/Images/demo1.gif)
 
