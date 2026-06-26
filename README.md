@@ -41,9 +41,9 @@ shell32dll
 
 ## 👋 Introduction
 
-**MATE** is a command-line utility designed to revert localized keyboard shortcut tables on specific MUI files to their original English defaults. 
+**MATE** is a command-line utility designed to revert localized keyboard shortcut tables on specific MUI files to their English (en-US) defaults. 
 
-In localized Windows environments, keyboard shortcuts in core applications like Explorer, Notepad and Wordpad are modified, often causing workflow friction for users who prefer standard English keyboard shortcuts such as `Ctrl + A` to select all. This utility automates the restoration of English accelerator tables into your system's MUI files, specifically targeting these three mentioned components.
+In localized Windows environments, keyboard shortcuts in core applications like Explorer, Notepad, and Wordpad are tailored for that specific language, often causing workflow friction for users who prefer globally standardized keyboard shortcuts such as `Ctrl + A` to select all. This utility automates the restoration of these keyboard shortcuts into your system's MUI files, specifically targeting these three mentioned components.
 
 > [!IMPORTANT]
 > Currently, **MATE** supports only Spanish (Spain) MUI files (es-ES). If your Windows environment uses a different language, running this application will simply have no effect.
