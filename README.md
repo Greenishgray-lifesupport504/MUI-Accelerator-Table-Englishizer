@@ -46,7 +46,7 @@ shell32dll
 In localized Windows environments, keyboard shortcuts in core applications like Explorer, Notepad and Wordpad are modified, often causing workflow friction for users who prefer standard English keyboard shortcuts such as `Ctrl + A` to select all. This utility automates the restoration of English accelerator tables into your system's MUI files, specifically targeting these three mentioned components.
 
 > [!IMPORTANT]
-> Currently, **MATE** only supports Spanish (Spain) MUI files (es-ES). If your Windows environment uses a different language, running this application will simply have no effect.
+> Currently, **MATE** supports only Spanish (Spain) MUI files (es-ES). If your Windows environment uses a different language, running this application will simply have no effect.
 
 ## 👌 Features
 
@@ -88,15 +88,10 @@ This work relies on the following resources:
 Currently, this tool is designed for **Windows 10 and 11**. It specifically supports Windows 10 20H2 and 22H2, and Windows 11 25H2, supporting both x86 and x64 architectures.
 
 ### Which system languages are supported?
-Currently, this tool supports only 'es-ES' (Spanish - Spain) MUI files, meaning that MUI files in other localizations will not be modified during program execution. However, adding support for other localizations is straightforward for any developer; continue reading:
+Currently, this tool supports only 'es-ES' (Spanish - Spain) MUI files, meaning that MUI files in other localizations will not be modified during program execution.
 
-### I am a developer and want to add support for other languages. Where should I start?
-Adding support for another system language is simple. You just need to follow the existing structure:
-1. Create a new class following the `LanguageConfiguration_esES` pattern (e.g., `LanguageConfiguration_ruRU` for Russian, or `LanguageConfiguration_frFR` for french).
-2. Add the required resource definitions for your target language's accelerator tables in the `AccTables.vb` file.
-3. Register your new language configuration in the main application logic within the `LangConfigs` array, so it can be detected during the file validation process.
-
-Since the architecture is modular, you only need to provide the correct checksums and accelerator data for your specific localization, and the tool will handle the rest.
+### Is it safe to use?
+Yes, it is highly safe. The program operates using strict CRC-32 checksum validation; if an MUI file does not match the known signatures in the source code, it is completely ignored and remains untouched. Furthermore, the original system files are never directly modified during the program's execution. All replacements are scheduled via the Windows Session Manager to occur during the next system reboot, acting as a safe buffer.
 
 ### What should I do if I want to cancel the pending MUI file replacements or if something goes wrong?
 If you need to cancel a pending MUI file replacement operation or if an issue occurs, you can manually clear the scheduled tasks:
@@ -107,10 +102,15 @@ If you need to cancel a pending MUI file replacement operation or if an issue oc
    * **Warning:** Ensure that you only delete this value if you are certain it does not contain other critical scheduled file operations added by the operating system or other third party software.
    Deleting this value safely discards the pending MUI file replacement operations, ensuring no modifications are applied to your system on the next reboot.
 
-### Is it safe to use?
-Yes, it is highly safe. The program operates using strict CRC-32 checksum validation; if an MUI file does not match the known signatures in the source code, it is completely ignored and remains untouched. Furthermore, the original system files are never directly modified during the program's execution. All replacements are scheduled via the Windows Session Manager to occur during the next system reboot, acting as a safe buffer.
-
 ![screenshot](/Images/faq1.png)
+
+### I am a developer and want to add support for other languages. Where should I start?
+Adding support for another system language is simple. You just need to follow the existing structure:
+1. Create a new class following the `LanguageConfiguration_esES` pattern (e.g., `LanguageConfiguration_ruRU` for Russian, or `LanguageConfiguration_frFR` for french).
+2. Add the required resource definitions for your target language's accelerator tables in the `AccTables.vb` file.
+3. Register your new language configuration in the main application logic within the `LangConfigs` array, so it can be detected during the file validation process.
+
+Since the architecture is modular, you only need to provide the correct checksums and accelerator data for your specific localization, and the tool will handle the rest.
 
 ## ⚠️ Disclaimer:
 
