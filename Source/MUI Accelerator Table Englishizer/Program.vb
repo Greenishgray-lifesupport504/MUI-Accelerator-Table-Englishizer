@@ -37,16 +37,6 @@ Module Program
 #Region " Fields "
 
     ''' <summary>
-    ''' Indicates whether any errors occurred during the program execution.
-    ''' </summary>
-    Private completedWithErrors As Boolean
-
-    ''' <summary>
-    ''' The <see cref="CultureInfo"/> instance representing the "en-US" culture.
-    ''' </summary>
-    Private ReadOnly CultureInfoEnUs As New CultureInfo("en-US")
-
-    ''' <summary>
     ''' The collection of supported <see cref="LanguageConfiguration"/> instances.
     ''' <para></para>
     ''' This array acts as the registry for all available localizations, enabling 
@@ -59,6 +49,21 @@ Module Program
     Private ReadOnly LangConfigs As LanguageConfiguration() = {
         New LanguageConfiguration_esES()
     }
+
+    ''' <summary>
+    ''' The <see cref="CultureInfo"/> instance representing the "en-US" culture.
+    ''' </summary>
+    Private ReadOnly CultureInfoEnUs As New CultureInfo("en-US")
+
+    ''' <summary>
+    ''' Tracks the total count of MUI files successfully processed during the current execution.
+    ''' </summary>
+    Private muiFilesProcessed As Integer
+
+    ''' <summary>
+    ''' Indicates whether any errors occurred during the program execution.
+    ''' </summary>
+    Private completedWithErrors As Boolean
 
 #End Region
 
@@ -155,217 +160,221 @@ Module Program
                 Program.WriteColoredLine(" Completed locating MUI files.", ConsoleColor.Green)
                 Console.WriteLine()
 
-                Program.WriteColoredLine(" MUI RESOURCE PROCESSING", ConsoleColor.Magenta)
-                Program.WriteColoredLine("================================================================================", ConsoleColor.DarkGray)
-                Console.WriteLine()
-
-                Program.WriteColoredLine(" Accepting Movefile EULA...", ConsoleColor.White)
-                Dim successAcceptMovefileEula As Boolean = Program.AcceptMovefileEula()
-                If Not successAcceptMovefileEula Then
-                    Program.ExitWithMessage(Nothing, exitCode:=1, Console.ForegroundColor)
-                End If
-                Program.WriteColoredLine(" Completed accepting Movefile EULA.", ConsoleColor.Green)
-                Console.WriteLine()
-
-                Program.WriteColoredLine($" Processing MUI file groups...", ConsoleColor.White)
-                Console.WriteLine()
-                For Each kvp As KeyValuePair(Of String, SortedSet(Of String)) In resolvedMuiFiles
-
-                    Dim currentChecksum As String = kvp.Key
-                    Program.WriteColoredLine($"   Group {Path.GetFileName(kvp.Value.First())} [CRC-32: {currentChecksum}]:", ConsoleColor.Cyan)
+                If (resolvedMuiFiles IsNot Nothing) AndAlso (resolvedMuiFiles.Count > 0) Then
+                    Program.WriteColoredLine(" MUI RESOURCE PROCESSING", ConsoleColor.Magenta)
+                    Program.WriteColoredLine("================================================================================", ConsoleColor.DarkGray)
                     Console.WriteLine()
 
-                    Dim matchingMuiDesc As MuiDescriptor = Nothing
-                    Dim foundMuiDesc As Boolean = False
+                    Program.WriteColoredLine(" Accepting Movefile EULA...", ConsoleColor.White)
+                    Dim successAcceptMovefileEula As Boolean = Program.AcceptMovefileEula()
+                    If Not successAcceptMovefileEula Then
+                        Program.ExitWithMessage(Nothing, exitCode:=1, Console.ForegroundColor)
+                    End If
+                    Program.WriteColoredLine(" Completed accepting Movefile EULA.", ConsoleColor.Green)
+                    Console.WriteLine()
 
-                    For Each muiDesc As MuiDescriptor In langconfig.MuiDescriptors
-                        If muiDesc.Checksum.Equals(currentChecksum, StringComparison.OrdinalIgnoreCase) Then
-                            matchingMuiDesc = muiDesc
-                            foundMuiDesc = True
-                            Exit For
+                    Program.WriteColoredLine($" Processing MUI file groups...", ConsoleColor.White)
+                    Console.WriteLine()
+                    For Each kvp As KeyValuePair(Of String, SortedSet(Of String)) In resolvedMuiFiles
+
+                        Dim currentChecksum As String = kvp.Key
+                        Program.WriteColoredLine($"   Group {Path.GetFileName(kvp.Value.First())} [CRC-32: {currentChecksum}]:", ConsoleColor.Cyan)
+                        Console.WriteLine()
+
+                        Dim matchingMuiDesc As MuiDescriptor = Nothing
+                        Dim foundMuiDesc As Boolean = False
+
+                        For Each muiDesc As MuiDescriptor In langconfig.MuiDescriptors
+                            If muiDesc.Checksum.Equals(currentChecksum, StringComparison.OrdinalIgnoreCase) Then
+                                matchingMuiDesc = muiDesc
+                                foundMuiDesc = True
+                                Exit For
+                            End If
+                        Next muiDesc
+
+                        If Not foundMuiDesc Then
+                            Program.WriteColoredLine($"     [WARN] No MUI descriptor definitions found for checksum: {currentChecksum}. Skipping group.", ConsoleColor.Red)
+                            Console.WriteLine()
+                            ' Program.completedWithErrors = True
+                            Continue For
                         End If
-                    Next muiDesc
 
-                    If Not foundMuiDesc Then
-                        Program.WriteColoredLine($"     [WARN] No MUI descriptor definitions found for checksum: {currentChecksum}. Skipping group.", ConsoleColor.Red)
-                        Console.WriteLine()
-                        ' Program.completedWithErrors = True
-                        Continue For
-                    End If
+                        Dim muiFileName As String = matchingMuiDesc.FileName
 
-                    Dim muiFileName As String = matchingMuiDesc.FileName
+                        Dim tempRcFilePath As String = Path.Combine(Path.GetTempPath(), $"{muiFileName}.rc")
+                        Dim tempResFilePath As String = Path.Combine(Path.GetTempPath(), $"{muiFileName}.res")
 
-                    Dim tempRcFilePath As String = Path.Combine(Path.GetTempPath(), $"{muiFileName}.rc")
-                    Dim tempResFilePath As String = Path.Combine(Path.GetTempPath(), $"{muiFileName}.res")
+                        Dim accTable As String = matchingMuiDesc.AcceleratorTable
 
-                    Dim accTable As String = matchingMuiDesc.AcceleratorTable
-
-                    Program.WriteColoredLine($"     Writing Accelerators table resource to: {tempRcFilePath}...", ConsoleColor.Gray)
-                    If File.Exists(tempRcFilePath) Then
-                        ' Silently try to delete any previous .rc file for safety.
-                        Try
-                            File.Delete(tempRcFilePath)
-                        Catch
-                        End Try
-                    End If
-                    Try
-                        File.WriteAllText(tempRcFilePath, accTable, encoding:=Encoding.Unicode)
-                    Catch ex As Exception
-                        Program.WriteColoredLine($"     An error occurred: {ex.Message}", ConsoleColor.Red)
-                        Console.WriteLine()
-                        Program.completedWithErrors = True
-                        Continue For
-                    End Try
-                    Program.WriteColoredLine("     Completed writing Accelerators table resource.", ConsoleColor.Green)
-                    Console.WriteLine()
-
-                    Dim compileArgs As String =
-                        $"-log    ""{AppGlobals.RESOURCE_HACKER_LOGFILE_PATH}"" " &
-                        $"-open   ""{tempRcFilePath}"" " &
-                        $"-save   ""{tempResFilePath}"" " &
-                         "-action   compile"
-
-                    Program.WriteColoredLine($"     Compiling Accelerators table resource to: {tempResFilePath}...", ConsoleColor.Gray)
-                    If File.Exists(tempResFilePath) Then
-                        ' Silently try to delete any previous .res file for safety.
-                        Try
-                            File.Delete(tempResFilePath)
-                        Catch
-                        End Try
-                    End If
-                    Dim successCompile As Boolean = Program.ExecuteResourceHacker(compileArgs)
-                    If Not successCompile Then
-                        Console.WriteLine()
-                        Program.completedWithErrors = True
-                        Continue For
-                    End If
-                    Program.WriteColoredLine("     Completed compiling Accelerators table resource.", ConsoleColor.Green)
-                    Console.WriteLine()
-
-                    For i As Integer = 0 To kvp.Value.Count - 1
-
-                        Dim sourceMuiFilePath As String = kvp.Value(i)
-                        Dim tempMuiFilePathPending As String = Path.Combine(tempMuiDirectoryPath, $"{muiFileName}.[{matchingMuiDesc.Checksum}].({i + 1:N0}).{AppGlobals.MuiFilePendingSuffix}")
-                        Dim tempMuiFilePathFailed As String = Path.Combine(tempMuiDirectoryPath, $"{muiFileName}.[{matchingMuiDesc.Checksum}].({i + 1:N0}).{AppGlobals.MuiFileFailedSuffix}")
-
-                        Program.WriteColoredLine($"     {i + 1:N0}: {sourceMuiFilePath}", ConsoleColor.DarkCyan)
-
-                        Program.WriteColoredLine($"        Copying to temp file: {tempMuiFilePathPending}...", ConsoleColor.Gray)
-
-                        If Not Directory.Exists(tempMuiDirectoryPath) Then
+                        Program.WriteColoredLine($"     Writing Accelerators table resource to: {tempRcFilePath}...", ConsoleColor.Gray)
+                        If File.Exists(tempRcFilePath) Then
+                            ' Silently try to delete any previous .rc file for safety.
                             Try
-                                Directory.CreateDirectory(tempMuiDirectoryPath)
+                                File.Delete(tempRcFilePath)
+                            Catch
+                            End Try
+                        End If
+                        Try
+                            File.WriteAllText(tempRcFilePath, accTable, encoding:=Encoding.Unicode)
+                        Catch ex As Exception
+                            Program.WriteColoredLine($"     An error occurred: {ex.Message}", ConsoleColor.Red)
+                            Console.WriteLine()
+                            Program.completedWithErrors = True
+                            Continue For
+                        End Try
+                        Program.WriteColoredLine("     Completed writing Accelerators table resource.", ConsoleColor.Green)
+                        Console.WriteLine()
+
+                        Dim compileArgs As String =
+                            $"-log    ""{AppGlobals.RESOURCE_HACKER_LOGFILE_PATH}"" " &
+                            $"-open   ""{tempRcFilePath}"" " &
+                            $"-save   ""{tempResFilePath}"" " &
+                             "-action   compile"
+
+                        Program.WriteColoredLine($"     Compiling Accelerators table resource to: {tempResFilePath}...", ConsoleColor.Gray)
+                        If File.Exists(tempResFilePath) Then
+                            ' Silently try to delete any previous .res file for safety.
+                            Try
+                                File.Delete(tempResFilePath)
+                            Catch
+                            End Try
+                        End If
+                        Dim successCompile As Boolean = Program.ExecuteResourceHacker(compileArgs)
+                        If Not successCompile Then
+                            Console.WriteLine()
+                            Program.completedWithErrors = True
+                            Continue For
+                        End If
+                        Program.WriteColoredLine("     Completed compiling Accelerators table resource.", ConsoleColor.Green)
+                        Console.WriteLine()
+
+                        For i As Integer = 0 To kvp.Value.Count - 1
+
+                            Dim sourceMuiFilePath As String = kvp.Value(i)
+                            Dim tempMuiFilePathPending As String = Path.Combine(tempMuiDirectoryPath, $"{muiFileName}.[{matchingMuiDesc.Checksum}].({i + 1:N0}).{AppGlobals.MuiFilePendingSuffix}")
+                            Dim tempMuiFilePathFailed As String = Path.Combine(tempMuiDirectoryPath, $"{muiFileName}.[{matchingMuiDesc.Checksum}].({i + 1:N0}).{AppGlobals.MuiFileFailedSuffix}")
+
+                            Program.WriteColoredLine($"     {i + 1:N0}: {sourceMuiFilePath}", ConsoleColor.DarkCyan)
+
+                            Program.WriteColoredLine($"        Copying to temp file: {tempMuiFilePathPending}...", ConsoleColor.Gray)
+
+                            If Not Directory.Exists(tempMuiDirectoryPath) Then
+                                Try
+                                    Directory.CreateDirectory(tempMuiDirectoryPath)
+                                Catch ex As Exception
+                                    Program.WriteColoredLine($"        Cannot create target directory: {ex.Message}", ConsoleColor.Red)
+                                    Console.WriteLine()
+                                    Program.completedWithErrors = True
+                                    Continue For
+                                End Try
+                            End If
+
+                            Try
+                                File.Copy(sourceMuiFilePath, tempMuiFilePathPending, overwrite:=True)
                             Catch ex As Exception
-                                Program.WriteColoredLine($"        Cannot create target directory: {ex.Message}", ConsoleColor.Red)
+                                Program.WriteColoredLine($"        An error occurred: {ex.Message}", ConsoleColor.Red)
                                 Console.WriteLine()
                                 Program.completedWithErrors = True
                                 Continue For
                             End Try
-                        End If
 
-                        Try
-                            File.Copy(sourceMuiFilePath, tempMuiFilePathPending, overwrite:=True)
-                        Catch ex As Exception
-                            Program.WriteColoredLine($"        An error occurred: {ex.Message}", ConsoleColor.Red)
-                            Console.WriteLine()
-                            Program.completedWithErrors = True
-                            Continue For
-                        End Try
+                            Program.WriteColoredLine($"        Clearing Read-Only attribute in temp file...", ConsoleColor.Gray)
+                            Try
+                                Dim attributes As FileAttributes = File.GetAttributes(tempMuiFilePathPending)
+                                If (attributes And FileAttributes.ReadOnly) = FileAttributes.ReadOnly Then
+                                    File.SetAttributes(tempMuiFilePathPending, attributes And Not FileAttributes.ReadOnly)
+                                End If
+                            Catch ex As Exception
+                                Program.WriteColoredLine($"        An error occurred: {ex.Message}", ConsoleColor.Red)
+                                Console.WriteLine()
+                                Program.completedWithErrors = True
+                                Continue For
+                            End Try
 
-                        Program.WriteColoredLine($"        Clearing Read-Only attribute in temp file...", ConsoleColor.Gray)
-                        Try
-                            Dim attributes As FileAttributes = File.GetAttributes(tempMuiFilePathPending)
-                            If (attributes And FileAttributes.ReadOnly) = FileAttributes.ReadOnly Then
-                                File.SetAttributes(tempMuiFilePathPending, attributes And Not FileAttributes.ReadOnly)
-                            End If
-                        Catch ex As Exception
-                            Program.WriteColoredLine($"        An error occurred: {ex.Message}", ConsoleColor.Red)
-                            Console.WriteLine()
-                            Program.completedWithErrors = True
-                            Continue For
-                        End Try
+                            Program.WriteColoredLine("        Overwriting Accelerators table in temp file...", ConsoleColor.Gray)
 
-                        Program.WriteColoredLine("        Overwriting Accelerators table in temp file...", ConsoleColor.Gray)
+                            Dim overwriteArgs As String =
+                                $"-log      ""{AppGlobals.RESOURCE_HACKER_LOGFILE_PATH}"" " &
+                                $"-open     ""{tempMuiFilePathPending}"" " &
+                                $"-save     ""{tempMuiFilePathPending}"" " &
+                                $"-resource ""{tempResFilePath}"" " &
+                                "-action      addoverwrite " &
+                                $"-mask     ""ACCELERATORS,,{langconfig.CultureInfo.LCID}"""
 
-                        Dim overwriteArgs As String =
-                            $"-log      ""{AppGlobals.RESOURCE_HACKER_LOGFILE_PATH}"" " &
-                            $"-open     ""{tempMuiFilePathPending}"" " &
-                            $"-save     ""{tempMuiFilePathPending}"" " &
-                            $"-resource ""{tempResFilePath}"" " &
-                            "-action      addoverwrite " &
-                            $"-mask     ""ACCELERATORS,,{langconfig.CultureInfo.LCID}"""
-
-                        Dim successOverwrite As Boolean = Program.ExecuteResourceHacker(overwriteArgs)
-                        If Not successOverwrite Then
-                            Console.WriteLine()
-                            Program.completedWithErrors = True
-                            Continue For
-                        End If
-
-                        Program.WriteColoredLine("        Scheduling replacement for source MUI file...", ConsoleColor.Gray)
-                        Dim bakFilePath As String = $"{sourceMuiFilePath}.{AppGlobals.MuiFileBackupSuffix}"
-                        If Not File.Exists(bakFilePath) Then
-                            ' Note: If file "name.mui.bak" exists, the post-reboot operation will silently fail as expected.
-                            ' We don't want to delete an original backup file and unnecessarily replace an already modified MUI file.
-                            Dim createBakFileArgs As String = $" ""{sourceMuiFilePath}"" ""{bakFilePath}"" "
-                            Dim successCreateBakFile As Boolean = Program.ExecuteMoveFile(createBakFileArgs)
-                            If Not successCreateBakFile Then
+                            Dim successOverwrite As Boolean = Program.ExecuteResourceHacker(overwriteArgs)
+                            If Not successOverwrite Then
                                 Console.WriteLine()
                                 Program.completedWithErrors = True
                                 Continue For
                             End If
-                        End If
 
-                        Dim replaceMuiFileArgs As String = $" ""{tempMuiFilePathPending}"" ""{sourceMuiFilePath}"" "
-                        Dim successMuiReplaceFile As Boolean = Program.ExecuteMoveFile(replaceMuiFileArgs)
-                        If Not successMuiReplaceFile Then
+                            Program.WriteColoredLine("        Scheduling replacement for source MUI file...", ConsoleColor.Gray)
+                            Dim bakFilePath As String = $"{sourceMuiFilePath}.{AppGlobals.MuiFileBackupSuffix}"
                             If Not File.Exists(bakFilePath) Then
-                                ' Best effort to revert .bak file rename.
-                                Dim revertBakFileArgs As String = $" ""{bakFilePath}"" ""{sourceMuiFilePath}"" "
-                                Dim successRevertBakFile As Boolean = Program.ExecuteMoveFile(revertBakFileArgs)
-                                If Not successRevertBakFile Then
-                                    ' Delete "PendingFileRenameOperations" value only if very critical MUI file:
-                                    If muiFileName.Equals("shell32.dll.mui", StringComparison.OrdinalIgnoreCase) Then
-                                        Const registryKeyPath As String = "SYSTEM\CurrentControlSet\Control\Session Manager"
-                                        Const valueName As String = "PendingFileRenameOperations"
-                                        Try
-                                            Using sessionManagerKey As RegistryKey = Registry.LocalMachine.OpenSubKey(registryKeyPath, writable:=True)
-                                                ' Deletes the entire multi-string value to clear all scheduled operations and secure the next boot.
-                                                sessionManagerKey?.DeleteValue(valueName, throwOnMissingValue:=False)
-                                            End Using
-
-                                        Catch ' Ignore errors. Really, really best effort to revert .bak file rename.
-                                        End Try
-                                    End If
+                                ' Note: If file "name.mui.bak" exists, the post-reboot operation will silently fail as expected.
+                                ' We don't want to delete an original backup file and unnecessarily replace an already modified MUI file.
+                                Dim createBakFileArgs As String = $" ""{sourceMuiFilePath}"" ""{bakFilePath}"" "
+                                Dim successCreateBakFile As Boolean = Program.ExecuteMoveFile(createBakFileArgs)
+                                If Not successCreateBakFile Then
+                                    Console.WriteLine()
+                                    Program.completedWithErrors = True
+                                    Continue For
                                 End If
                             End If
 
+                            Dim replaceMuiFileArgs As String = $" ""{tempMuiFilePathPending}"" ""{sourceMuiFilePath}"" "
+                            Dim successMuiReplaceFile As Boolean = Program.ExecuteMoveFile(replaceMuiFileArgs)
+                            If Not successMuiReplaceFile Then
+                                If Not File.Exists(bakFilePath) Then
+                                    ' Best effort to revert .bak file rename.
+                                    Dim revertBakFileArgs As String = $" ""{bakFilePath}"" ""{sourceMuiFilePath}"" "
+                                    Dim successRevertBakFile As Boolean = Program.ExecuteMoveFile(revertBakFileArgs)
+                                    If Not successRevertBakFile Then
+                                        ' Delete "PendingFileRenameOperations" value only if very critical MUI file:
+                                        If muiFileName.Equals("shell32.dll.mui", StringComparison.OrdinalIgnoreCase) Then
+                                            Const registryKeyPath As String = "SYSTEM\CurrentControlSet\Control\Session Manager"
+                                            Const valueName As String = "PendingFileRenameOperations"
+                                            Try
+                                                Using sessionManagerKey As RegistryKey = Registry.LocalMachine.OpenSubKey(registryKeyPath, writable:=True)
+                                                    ' Deletes the entire multi-string value to clear all scheduled operations and secure the next boot.
+                                                    sessionManagerKey?.DeleteValue(valueName, throwOnMissingValue:=False)
+                                                End Using
+
+                                            Catch ' Ignore errors. Really, really best effort to revert .bak file rename.
+                                            End Try
+                                        End If
+                                    End If
+                                End If
+
+                                Console.WriteLine()
+                                Program.completedWithErrors = True
+                                Continue For
+                            End If
+
+                            ' Delete any failed temp MUI file from previous reboots.
+                            Dim deleteFailedTempMuiArgs As String = $" ""{tempMuiFilePathFailed}"" """" "
+                            Dim successdeleteFailedTempMui As Boolean = Program.ExecuteMoveFile(deleteFailedTempMuiArgs)
+                            If Not successdeleteFailedTempMui Then
+                                ' Ignore errors as this is not critical.
+                            End If
+
+                            ' If the temp MUI file still exists on directory, mark it as failed (rename it).
+                            Dim markTempMuiAsFailedArgs As String = $" ""{tempMuiFilePathPending}"" ""{tempMuiFilePathFailed}"" "
+                            Dim successMarkTempMuiAsFailed As Boolean = Program.ExecuteMoveFile(markTempMuiAsFailedArgs)
+                            If Not successMarkTempMuiAsFailed Then
+                                ' Ignore errors as this is not critical.
+                            End If
+
+                            Program.WriteColoredLine($"        Completed processing MUI file.", ConsoleColor.Green)
                             Console.WriteLine()
-                            Program.completedWithErrors = True
-                            Continue For
-                        End If
+                            Program.muiFilesProcessed += 1
+                        Next i
 
-                        ' Delete any failed temp MUI file from previous reboots.
-                        Dim deleteFailedTempMuiArgs As String = $" ""{tempMuiFilePathFailed}"" """" "
-                        Dim successdeleteFailedTempMui As Boolean = Program.ExecuteMoveFile(deleteFailedTempMuiArgs)
-                        If Not successdeleteFailedTempMui Then
-                            ' Ignore errors as this is not critical.
-                        End If
+                    Next kvp
+                    Program.WriteColoredLine(" Completed processing MUI file groups.", ConsoleColor.Green)
+                    Console.WriteLine()
 
-                        ' If the temp MUI file still exists on directory, mark it as failed (rename it).
-                        Dim markTempMuiAsFailedArgs As String = $" ""{tempMuiFilePathPending}"" ""{tempMuiFilePathFailed}"" "
-                        Dim successMarkTempMuiAsFailed As Boolean = Program.ExecuteMoveFile(markTempMuiAsFailedArgs)
-                        If Not successMarkTempMuiAsFailed Then
-                            ' Ignore errors as this is not critical.
-                        End If
-
-                        Program.WriteColoredLine($"        Completed processing MUI file.", ConsoleColor.Green)
-                        Console.WriteLine()
-                    Next i
-
-                Next kvp
-                Program.WriteColoredLine(" Completed processing MUI file groups.", ConsoleColor.Green)
-                Console.WriteLine()
+                End If
 
             Catch ex As Exception
                 Console.WriteLine()
@@ -379,18 +388,28 @@ Module Program
         Program.WriteColoredLine(" FINALIZATION", ConsoleColor.Magenta)
         Program.WriteColoredLine("================================================================================", ConsoleColor.DarkGray)
         Console.WriteLine()
-        If Not Program.completedWithErrors Then
-            Program.WriteColoredLine(" Task completed successfully!", ConsoleColor.Green)
+
+        If Not Program.completedWithErrors AndAlso (Program.muiFilesProcessed = 0) Then
+            Program.WriteColoredLine(" [!] No MUI files were processed because no matching files were found on the current system.", ConsoleColor.Yellow)
+            Console.WriteLine()
+            Program.WriteColoredLine(" The application will exit now without making any changes to your system.", Console.ForegroundColor)
+            Console.WriteLine()
+
+        ElseIf Not Program.completedWithErrors Then
+            Program.PrintScheduledFileOperations()
+            Program.WriteColoredLine(" Operations completed successfully!", ConsoleColor.Green)
             Console.WriteLine()
             Program.WriteColoredLine(" All pending file operations have been scheduled for the next system restart.", ConsoleColor.Yellow)
             Program.WriteColoredLine(" [!] Please reboot your system to apply the changes.", ConsoleColor.Yellow)
             Console.WriteLine()
-            Program.PrintScheduledFileOperations()
+
         Else
-            Program.WriteColoredLine(" Task completed with errors.", ConsoleColor.DarkRed)
+            Program.PrintScheduledFileOperations()
+            Program.WriteColoredLine(" Operations completed with errors.", ConsoleColor.DarkRed)
             Console.WriteLine()
             Program.WriteColoredLine(" [X] Some MUI resources may not have been updated or some file replacement operations may not have been scheduled. Please review any error messages above.", ConsoleColor.Red)
             Console.WriteLine()
+
         End If
 
         Program.ExitWithMessage(Nothing, exitCode:=0, Console.ForegroundColor)
@@ -957,7 +976,7 @@ Module Program
 
                                 index += 2
                             Loop
-                            Console.WriteLine()
+                            '  Console.WriteLine()
                         End If
                     End If
                 End If
