@@ -4,8 +4,6 @@ console-applications
 desktop-app 
 desktop-application 
 dotnet 
-dotnet-core 
-netcore 
 netframework 
 netframework48 
 tool 
@@ -16,42 +14,61 @@ windows
 windows-app 
 windows-application 
 windows-applications 
-windows-forms 
-winforms 
+notepad 
+hotkeys 
+windows-10 
+english 
+explorer 
+spanish 
+shortcut-key 
+mui 
+console-application 
+keyboard-shortcuts 
+wordpad 
+windows-explorer 
+accelerators 
+windows11 
+shell32 
+patch-tools 
+shell32dll 
  -->
 
-# PROJECT NAME
+# MATE (MUI Accelerator Table Englishizer)
 
-### PROJECT DESCRIPTION
+### Enables English keyboard shortcuts for Explorer, Notepad and Wordpad on Windows 10 and 11 for non-English users.
 
 ------------------
 
 ## 👋 Introduction
 
-INTRODUCTION TEXT
+**MATE** is a command-line utility designed to revert localized keyboard shortcut tables on specific MUI files to their original English defaults. 
+
+In localized Windows environments, keyboard shortcuts in core applications like Explorer, Notepad and Wordpad are modified, often causing workflow friction for users who prefer standard English keyboard shortcuts such as `Ctrl + A` to select all. This utility automates the restoration of English accelerator tables into your system's MUI files, specifically targeting these three mentioned components.
+
+> [!IMPORTANT]
+> Currently, **MATE** only supports Spanish (Spain) MUI files (es-ES). If your Windows environment uses a different language, running this application will simply have no effect.
 
 ## 👌 Features
 
-FEATURES TEXT
+*   **Targeted Restoration**: Automatically identifies and applies native English accelerator tables to `shell32.dll.mui` (affecting Windows Explorer), `notepad.exe.mui` and `wordpad.exe.mui` files.
+*   **Safety-First Design**: Utilizes CRC-32 checksum verification to ensure only known, compatible MUI files are modified.
+*   **Non-Destructive Process**: Employs a temporary staging area and native Windows mechanisms for pending file rename operations after a system reboot, ensuring the original files are never directly modified while the application is running.
+*   **Supports both Windows 10 and 11**: Fully tested on Windows 10 20H2 and 22H2, and Windows 11 25H2, supporting both x86 and x64 architectures.
+*   **Supports Classic Wordpad on Windows 11**: Fully tested for the **WinAero**'s classic version of Wordpad on Windows 11. [Read more at Winaero](https://winaero.com/wordpad-for-windows-11/)
 
-## 🖼️ Screenshots
+## 🖼️ Screenshots / Animated GIFs
 
-![screenshot](/Images/screenshot.png)
+![screenshot](/Images/demo1.gif)
 
-## 🎦 Videos
-
-<!-- Download a recorded video by clicking [here](/Video/video.mp4) -->
-
-<!-- See a recorded video by clicking on the following button:
-[![PROJECT_NAME DEMO VIDEO](Images/demo_video.jpg)](https://www.youtube.com/watch?v=XXXXXXXXX)  -->
+![screenshot](/Images/demo2.gif)
 
 ## 📝 Requirements
 
-- Microsoft Windows OS.
+- Microsoft Windows 10 or Windows 11, specifically using Spanish (Spain) as the system language.
 
 ## 🤖 Getting Started
 
-Download the latest compilation by clicking [here](https://github.com/ElektroStudios/PROJECT_NAME/releases/latest).
+Download the latest release by clicking [here](https://github.com/ElektroStudios/MUI-Accelerator-Table-Englishizer/releases/latest) and start using it!.
 
 ## 🔄 Change Log
 
@@ -61,17 +78,49 @@ Explore the complete list of changes, bug fixes, and improvements across differe
 
 This work relies on the following resources: 
 
+ - [Resource Hacker](https://www.angusj.com/resourcehacker/)
+ - [SysInternals Movefile](https://learn.microsoft.com/sysinternals/downloads/pendmoves#movefile-usage)
  - [.NET Framework](https://dotnet.microsoft.com/en-us/download/dotnet-framework)
+
+## ❓ FAQ
+
+### Which Windows versions are supported?
+Currently, this tool is designed for **Windows 10 and 11**. It specifically supports Windows 10 20H2 and 22H2, and Windows 11 25H2, supporting both x86 and x64 architectures.
+
+### Which system languages are supported?
+Currently, this tool supports only 'es-ES' (Spanish - Spain) MUI files, meaning that MUI files in other localizations will not be modified during program execution. However, adding support for other localizations is straightforward for any developer; continue reading:
+
+### I am a developer and want to add support for other languages. Where should I start?
+Adding support for another system language is simple. You just need to follow the existing structure:
+1. Create a new class following the `LanguageConfiguration_esES` pattern (e.g., `LanguageConfiguration_ruRU` for Russian, or `LanguageConfiguration_frFR` for french).
+2. Add the required resource definitions for your target language's accelerator tables in the `AccTables.vb` file.
+3. Register your new language configuration in the main application logic within the `LangConfigs` array, so it can be detected during the file validation process.
+
+Since the architecture is modular, you only need to provide the correct checksums and accelerator data for your specific localization, and the tool will handle the rest.
+
+### What should I do if I want to cancel the pending MUI file replacements or if something goes wrong?
+If you need to cancel a pending MUI file replacement operation or if an issue occurs, you can manually clear the scheduled tasks:
+1. Press `Win + R`, type `regedit`, and hit Enter.
+2. Navigate to: `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Session Manager`.
+3. Locate the value named **`PendingFileRenameOperations`**.
+4. Right-click and delete this value.
+   * **Warning:** Ensure that you only delete this value if you are certain it does not contain other critical scheduled file operations added by the operating system or other third party software.
+   Deleting this value safely discards the pending MUI file replacement operations, ensuring no modifications are applied to your system on the next reboot.
+
+### Is it safe to use?
+Yes, it is highly safe. The program operates using strict CRC-32 checksum validation; if an MUI file does not match the known signatures in the source code, it is completely ignored and remains untouched. Furthermore, the original system files are never directly modified during the program's execution. All replacements are scheduled via the Windows Session Manager to occur during the next system reboot, acting as a safe buffer.
+
+![screenshot](/Images/faq1.png)
 
 ## ⚠️ Disclaimer:
 
-This Work (the repository and the content provided in) is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the Work or the use or other dealings in the Work.
+This software is provided "as is," without warranty of any kind. The author is not responsible for any system instability, data loss, or operating system malfunctions. By running this application, you acknowledge that you have the knowledge to troubleshoot system-level errors and have taken the necessary precautions (e.g., creating a System Restore point or a full backup).
 
-This Work has no affiliation, approval or endorsement by the author(s) of the third-party libraries used by this Work.
+**Use this software at your own risk.** This application modifies system-level MUI files to change keyboard accelerator tables. While the process is designed with safety mechanisms, modifying system files always may carry issues with System File Protection (SFC), DISM, or Windows Update functionalities. 
 
 ## 💪 Contributing
 
-Your contribution is highly appreciated!. If you have any ideas, suggestions, or encounter issues, feel free to open an issue by clicking [here](https://github.com/ElektroStudios/PROJECT_NAME/issues/new/choose). 
+Your contribution is highly appreciated!. If you have any ideas, suggestions, or encounter issues, feel free to open an issue by clicking [here](https://github.com/ElektroStudios/MUI-Accelerator-Table-Englishizer/issues/new/choose). 
 
 Your input helps make this Work better for everyone. Thank you for your support! 🚀
 
